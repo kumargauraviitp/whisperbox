@@ -116,7 +116,9 @@ router.delete('/messages/:id', requireAuth, async (req, res) => {
 
 // Verify token (admin only)
 router.get('/verify', requireAuth, async (req, res) => {
-  res.json({ valid: true, admin: req.admin });
+  // Only return a boolean — do NOT echo the decoded JWT payload (it contains
+  // the issued-at timestamp and expiry which aids token forgery analysis).
+  res.json({ valid: true });
 });
 
 export default router;

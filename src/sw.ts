@@ -36,20 +36,29 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
-  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href
+  const targetUrl = new URL(event.notification.data.url || '/', self.location.origin)
+  const targetPath = targetUrl.pathname
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window/tab open with the target URL
+      // Focus an already-open tab whose pathname matches (ignore query/hash).
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i]
-        if (client.url === urlToOpen && 'focus' in client) {
+        let clientPath = '/'
+        try {
+          clientPath = new URL(client.url, self.location.origin).pathname
+        } catch {}
+        if (clientPath === targetPath && 'focus' in client) {
+          // Navigate the existing tab to the target URL, then focus it.
+          if ('navigate' in client) {
+            ;(client as any).navigate(targetUrl.href).catch(() => {})
+          }
           return client.focus()
         }
       }
-      // If not, open a new window
+      // No matching tab — open a new one.
       if (self.clients.openWindow) {
-        return self.clients.openWindow(urlToOpen)
+        return self.clients.openWindow(targetUrl.href)
       }
     })
   )

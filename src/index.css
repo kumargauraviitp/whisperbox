@@ -43,6 +43,22 @@ html, body, #root {
   width: 100%;
 }
 
+/* Particle background container — on mobile we render a lightweight CSS
+   gradient instead of the WebGL canvas (which glitches on many phones). */
+.particle-bg {
+  background: radial-gradient(circle at 20% 30%, rgba(0, 242, 255, 0.08) 0%, transparent 45%),
+              radial-gradient(circle at 80% 70%, rgba(255, 0, 160, 0.08) 0%, transparent 45%),
+              radial-gradient(circle at 50% 50%, rgba(123, 47, 247, 0.06) 0%, transparent 60%),
+              #0a0a0f;
+}
+
+@media (min-width: 640px) {
+  /* Desktop: canvas overlays the gradient, so drop the static background. */
+  .particle-bg {
+    background: #0a0a0f;
+  }
+}
+
 /* Page transition */
 .page-transition {
   min-height: 100vh;
@@ -858,6 +874,12 @@ html, body, #root {
   margin: 0;
 }
 
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .logout-btn {
   display: flex;
   align-items: center;
@@ -875,6 +897,147 @@ html, body, #root {
 .logout-btn:hover {
   background: rgba(255, 68, 68, 0.2);
   box-shadow: 0 0 15px rgba(255, 68, 68, 0.2);
+}
+
+/* Admin conversations (grouped by username) */
+.conversations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conversation-group {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.2s ease;
+}
+
+.conversation-group:hover {
+  border-color: rgba(0, 242, 255, 0.25);
+}
+
+.conversation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  gap: 12px;
+}
+
+.conversation-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.conversation-user .mono-text {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.conversation-pending {
+  color: #ffaa00;
+  font-weight: 600;
+}
+
+.conversation-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: rgba(0, 242, 255, 0.12);
+  color: #00f2ff;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.conversation-messages {
+  overflow: hidden;
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* New-message pulse dot */
+.new-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #00ff88;
+  box-shadow: 0 0 8px #00ff88, 0 0 4px #00ff88;
+  flex-shrink: 0;
+  animation: new-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes new-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.25); }
+}
+
+/* Per-message delete button */
+.message-card {
+  position: relative;
+}
+
+.message-delete-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 68, 68, 0.08);
+  border: 1px solid rgba(255, 68, 68, 0.2);
+  color: rgba(255, 100, 100, 0.7);
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.message-card:hover .message-delete-btn {
+  opacity: 1;
+}
+
+.message-delete-btn:hover {
+  background: rgba(255, 68, 68, 0.25);
+  color: #ff6868;
+  box-shadow: 0 0 12px rgba(255, 68, 68, 0.3);
+}
+
+@media (hover: none) {
+  /* On touch devices the delete button is always visible (no hover). */
+  .message-delete-btn {
+    opacity: 0.7;
+  }
 }
 
 .stats-grid {

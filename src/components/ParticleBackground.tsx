@@ -11,8 +11,13 @@ function ParticleBackground() {
     const container = containerRef.current
     if (!container) return
 
+    // Skip the WebGL background entirely on small screens — it causes heavy
+    // GPU glitches and "corrupted" visuals on mobile GPUs. The CSS gradient
+    // fallback (see .particle-bg-fallback in index.css) covers those devices.
     const isMobile = window.innerWidth < 640
-    const particleCount = isMobile ? 25 : 55
+    if (isMobile) return
+
+    const particleCount = 55
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(
@@ -181,6 +186,7 @@ function ParticleBackground() {
   return (
     <div
       ref={containerRef}
+      className="particle-bg"
       style={{
         position: 'fixed',
         top: 0,

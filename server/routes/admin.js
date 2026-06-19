@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { requireAuth } from '../middleware/auth.js';
 import { createRateLimiter } from '../middleware/rateLimiter.js';
 import { validateReply, validatePassword } from '../middleware/validator.js';
-import { getMessages, addReply, getStats, getAdminPinHash, getJwtSecret } from '../utils/db.js';
+import { getMessages, addReply, deleteMessage, getStats, getAdminPinHash, getJwtSecret } from '../utils/db.js';
 import { sendPushNotification } from '../utils/push.js';
 
 const router = express.Router();
@@ -99,15 +99,24 @@ router.get('/stats', requireAuth, async (req, res) => {
   }
 });
 
+// Delete a message (admin only)
+router.delete('/messages/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await deleteMessage(id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Message not found.' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting message:', err);
+    res.status(500).json({ error: 'Failed to delete message.' });
+  }
+});
+
 // Verify token (admin only)
 router.get('/verify', requireAuth, async (req, res) => {
   res.json({ valid: true, admin: req.admin });
-});
-
-// Logout
-router.post('/logout', (req, res) => {
-  res.clearCookie('admin_token', { path: '/' });
-  res.json({ success: true });
 });
 
 export default router;

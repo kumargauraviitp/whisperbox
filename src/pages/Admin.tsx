@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Lock, Inbox, MessageSquare, CheckCircle, Clock, LogOut, Shield, AlertTriangle } from 'lucide-react'
+import {
+  ArrowLeft, Lock, Inbox, MessageSquare, CheckCircle, Clock, LogOut, Shield,
+  AlertTriangle, ChevronDown, ChevronRight, User,
+} from 'lucide-react'
 import GlassCard from '../components/GlassCard'
 import PageTransition from '../components/PageTransition'
 import MessageCard from '../components/MessageCard'
+import NotificationToggle from '../components/NotificationToggle'
 import { api } from '../utils/api'
 import { useAuth } from '../utils/authContext'
 import type { Message } from '../utils/storage'
@@ -25,6 +29,23 @@ type AdminStats = {
   replied: number
 }
 
+// localStorage key tracking which messages the admin has already seen.
+const SEEN_KEY = 'whisperbox_seen_messages'
+
+function readSeenIds(): Set<string> {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'))
+  } catch {
+    return new Set<string>()
+  }
+}
+
+function writeSeenIds(ids: Set<string>) {
+  // Keep the set bounded — only the most recent 500 ids.
+  const arr = Array.from(ids).slice(-500)
+  localStorage.setItem(SEEN_KEY, JSON.stringify(arr))
+}
+
 function Admin() {
   const navigate = useNavigate()
   const { isAuthenticated, login, logout } = useAuth()
@@ -34,6 +55,8 @@ function Admin() {
   const [stats, setStats] = useState<AdminStats>({ total: 0, pending: 0, replied: 0 })
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(false)
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => readSeenIds())
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
 
   const loadData = useCallback(async () => {
     setDataLoading(true)
@@ -72,6 +95,53 @@ function Admin() {
     }
   }, [isAuthenticated, loadData])
 
+  // Mark messages as seen once the admin actually expands a group or loads data.
+  const markGroupSeen = useCallback((username: string, groupMessages: Message[]) => {
+    setSeenIds((prev) => {
+      const next = new Set(prev)
+      let changed = false
+      for (const m of groupMessages) {
+        if (!next.has(m.id)) {
+          next.add(m.id)
+          changed = true
+        }
+      }
+      if (changed) {
+        writeSeenIds(next)
+        // Auto-collapse the dot once seen.
+        console.log(`Marked ${username} messages as seen`)
+      }
+      return next
+    })
+  }, [])
+
+  // Group messages by username (most recent activity first).
+  const grouped = useMemo(() => {
+    const map = new Map<string, Message[]>()
+    for (const m of messages) {
+      const list = map.get(m.senderUsername) || []
+      list.push(m)
+      map.set(m.senderUsername, list)
+    }
+    // Sort each group's messages newest-first.
+    for (const list of map.values()) {
+      list.sort((a, b) => b.createdAt - a.createdAt)
+    }
+    // Sort groups by newest message timestamp.
+    return Array.from(map.entries()).sort(
+      (a, b) => b[1][0].createdAt - a[1][0].createdAt
+    )
+  }, [messages])
+
+  // Count of unseen (new) messages per username for the dot indicator.
+  const unseenCount = useCallback(
+    (username: string) => {
+      const list = grouped.find(([u]) => u === username)?.[1] || []
+      return list.filter((m) => !seenIds.has(m.id)).length
+    },
+    [grouped, seenIds]
+  )
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!password) return
@@ -96,6 +166,37 @@ function Admin() {
       const message = err instanceof Error ? err.message : 'Unknown error'
       alert('Failed to send reply: ' + message)
     }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.adminDeleteMessage(id)
+      // Optimistically remove locally so the UI updates instantly.
+      setMessages((prev) => prev.filter((m) => m.id !== id))
+      setSeenIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        writeSeenIds(next)
+        return next
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      alert('Failed to delete message: ' + message)
+    }
+  }
+
+  const toggleGroup = (username: string, groupMessages: Message[]) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(username)) {
+        next.delete(username)
+      } else {
+        next.add(username)
+        // Mark all messages in this group as seen the moment it's expanded.
+        markGroupSeen(username, groupMessages)
+      }
+      return next
+    })
   }
 
   const handleLogout = () => {
@@ -172,10 +273,13 @@ function Admin() {
             >
               <div className="admin-header">
                 <h2>Message Dashboard</h2>
-                <button className="logout-btn" onClick={handleLogout}>
-                  <LogOut size={16} />
-                  Logout
-                </button>
+                <div className="admin-header-actions">
+                  <NotificationToggle />
+                  <button className="logout-btn" onClick={handleLogout}>
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </div>
               </div>
 
               <div className="stats-grid">
@@ -199,30 +303,82 @@ function Admin() {
               <GlassCard delay={0.3} className="messages-panel">
                 <div className="messages-panel-header">
                   <MessageSquare size={20} />
-                  <h3>All Messages</h3>
-                  <span className="messages-count">{messages.length}</span>
+                  <h3>Conversations</h3>
+                  <span className="messages-count">{grouped.length}</span>
                 </div>
 
                 {dataLoading ? (
                   <div className="empty-state">
                     <span className="loading-dots">Loading messages...</span>
                   </div>
-                ) : messages.length === 0 ? (
+                ) : grouped.length === 0 ? (
                   <div className="empty-state">
                     <Inbox size={48} />
                     <p>No messages yet. Share your link!</p>
                   </div>
                 ) : (
-                  <div className="messages-list">
-                    {messages.map((msg, i) => (
-                      <MessageCard
-                        key={msg.id}
-                        message={msg}
-                        index={i}
-                        isAdmin
-                        onReply={handleReply}
-                      />
-                    ))}
+                  <div className="conversations-list">
+                    {grouped.map(([username, groupMessages], i) => {
+                      const isOpen = openGroups.has(username)
+                      const newCount = unseenCount(username)
+                      const pendingCount = groupMessages.filter((m) => !m.reply).length
+                      const lastTime = new Date(groupMessages[0].createdAt).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                      })
+                      return (
+                        <motion.div
+                          key={username}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="conversation-group"
+                        >
+                          <button
+                            className="conversation-header"
+                            onClick={() => toggleGroup(username, groupMessages)}
+                          >
+                            <div className="conversation-user">
+                              {isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                              <User size={16} />
+                              <span className="mono-text">{username}</span>
+                              {newCount > 0 && (
+                                <span className="new-dot" title={`${newCount} new message${newCount > 1 ? 's' : ''}`} />
+                              )}
+                            </div>
+                            <div className="conversation-meta">
+                              {pendingCount > 0 && (
+                                <span className="conversation-pending">{pendingCount} pending</span>
+                              )}
+                              <span className="conversation-time">{lastTime}</span>
+                              <span className="conversation-count">{groupMessages.length}</span>
+                            </div>
+                          </button>
+
+                          <AnimatePresence>
+                            {isOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="conversation-messages"
+                              >
+                                {groupMessages.map((msg, mi) => (
+                                  <MessageCard
+                                    key={msg.id}
+                                    message={msg}
+                                    index={mi}
+                                    isAdmin
+                                    onReply={handleReply}
+                                    onDelete={handleDelete}
+                                  />
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      )
+                    })}
                   </div>
                 )}
               </GlassCard>

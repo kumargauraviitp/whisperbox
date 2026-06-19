@@ -73,6 +73,11 @@ export const api = {
       body: JSON.stringify({ reply }),
     }),
 
+  adminDeleteMessage: (id: string) =>
+    fetchJson(`${API_BASE}/api/admin/messages/${id}`, {
+      method: 'DELETE',
+    }),
+
   getVapidPublicKey: async () => {
     return fetchJson(`${API_BASE}/api/notifications/vapid-public-key`);
   },

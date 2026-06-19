@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { MessageSquare, Reply, Clock } from 'lucide-react'
+import { MessageSquare, Reply, Clock, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import type { Message } from '../utils/storage'
 
@@ -8,9 +8,10 @@ interface MessageCardProps {
   index?: number
   isAdmin?: boolean
   onReply?: (id: string, reply: string) => void
+  onDelete?: (id: string) => void
 }
 
-function MessageCard({ message, index = 0, isAdmin = false, onReply }: MessageCardProps) {
+function MessageCard({ message, index = 0, isAdmin = false, onReply, onDelete }: MessageCardProps) {
   const formattedDate = new Date(message.createdAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -61,6 +62,19 @@ function MessageCard({ message, index = 0, isAdmin = false, onReply }: MessageCa
 
       {isAdmin && !message.reply && onReply && (
         <AdminReplyForm messageId={message.id} onReply={onReply} />
+      )}
+
+      {isAdmin && onDelete && (
+        <button
+          className="message-delete-btn"
+          onClick={() => {
+            if (confirm('Delete this message permanently?')) onDelete(message.id)
+          }}
+          title="Delete message"
+          aria-label="Delete message"
+        >
+          <Trash2 size={15} />
+        </button>
       )}
     </motion.div>
   )

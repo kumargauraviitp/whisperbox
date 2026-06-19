@@ -84,6 +84,19 @@ export async function addReply(id, reply) {
   return data.length > 0 ? data[0] : null;
 }
 
+export async function deleteMessage(id) {
+  const { data, error } = await db
+    .from('messages')
+    .delete()
+    .eq('id', id)
+    .select('id');
+
+  if (error) {
+    throw error;
+  }
+  return (data && data.length > 0);
+}
+
 export async function getStats() {
   const [totalResult, pendingResult, repliedResult] = await Promise.all([
     db.from('messages').select('id', { count: 'exact', head: true }),

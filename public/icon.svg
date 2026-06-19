@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#0a0a0f"/>
+    </radialGradient>
+    <radialGradient id="ball" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#7be8ff"/>
+      <stop offset="45%" stop-color="#00f2ff"/>
+      <stop offset="100%" stop-color="#7b2ff7"/>
+    </radialGradient>
+    <linearGradient id="stand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff00a0"/>
+      <stop offset="100%" stop-color="#7b2ff7"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background fills the full square (important for maskable / apple-touch) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Crystal ball with neon glow -->
+  <g filter="url(#glow)">
+    <circle cx="256" cy="222" r="130" fill="url(#ball)"/>
+    <!-- highlight -->
+    <ellipse cx="210" cy="172" rx="44" ry="28" fill="#ffffff" opacity="0.55"/>
+    <!-- inner stars / sparkle -->
+    <circle cx="300" cy="200" r="5" fill="#ffffff" opacity="0.9"/>
+    <circle cx="232" cy="270" r="4" fill="#ffffff" opacity="0.8"/>
+    <circle cx="288" cy="258" r="3" fill="#ffffff" opacity="0.7"/>
+  </g>
+
+  <!-- Stand / base -->
+  <path d="M176 372 Q256 360 336 372 L320 410 Q256 422 192 410 Z" fill="url(#stand)"/>
+  <rect x="196" y="404" width="120" height="20" rx="8" fill="url(#stand)"/>
+</svg>
